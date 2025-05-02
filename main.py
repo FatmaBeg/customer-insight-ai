@@ -81,12 +81,12 @@ def check_and_train_models(engine):
         try:
             # Train churn model
             logger.info("Training churn prediction model...")
-            train_churn(engine)
+            #train_churn(engine)
             logger.info("Churn model training completed")
             
             # Train return risk model
             logger.info("Training return risk prediction model...")
-            #train_return_risk(engine)
+            train_return_risk(engine)
             logger.info("Return risk model training completed")
             
             # Train purchase model

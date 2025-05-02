@@ -12,6 +12,7 @@ from tensorflow.keras.optimizers import Adam
 from data.queries import get_return_risk_raw_data
 from features.return_risk_features import ReturnRiskFeatureEngineer
 from explainability.shap_explainer import SHAPExplainer
+from training.losses import weighted_binary_crossentropy
 
 def create_mlp_model(input_dim):
     """
@@ -31,9 +32,11 @@ def create_mlp_model(input_dim):
         Dense(1, activation='sigmoid')
     ])
     
+    positive_weight = 3.0  # deneysel başlayabilirsin
+
     model.compile(
         optimizer=Adam(learning_rate=0.001),
-        loss='binary_crossentropy',
+        loss=weighted_binary_crossentropy(pos_weight=positive_weight),
         metrics=['accuracy']
     )
     
