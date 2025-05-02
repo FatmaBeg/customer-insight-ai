@@ -4,11 +4,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.churn_api import app as churn_app
 from api.return_risk_api import app as return_risk_app
-from api.purchase_api import app as purchase_api
+from api.purchase_ncf_api import router as purchase_ncf_router
 from config.database import get_connection
 from training.train_churn import main as train_churn
 from training.train_return_risk import main as train_return_risk
-from training.train_purchase import main as train_purchase
+from training.train_purchase_ncf import main as train_purchase_ncf
 
 # Configure logging
 logging.basicConfig(
@@ -36,7 +36,7 @@ app.add_middleware(
 # Include routers from all APIs
 app.include_router(churn_app.router, prefix="/api/v1", tags=["churn"])
 app.include_router(return_risk_app.router, prefix="/api/v1", tags=["return-risk"])
-app.include_router(purchase_api.router, prefix="/api/v1", tags=["purchase"])
+app.include_router(purchase_ncf_router, prefix="/api/v1", tags=["purchase-ncf"])
 
 @app.get("/")
 async def root():
@@ -47,7 +47,7 @@ async def root():
         "endpoints": {
             "churn": "/api/v1/predict/churn",
             "return_risk": "/api/v1/predict/return-risk",
-            "purchase": "/api/v1/predict/purchase"
+            "purchase_ncf": "/api/v1/predict/purchase_ncf"
         }
     }
 
@@ -67,10 +67,8 @@ def check_and_train_models(engine):
     model_files = [
         'models/trained_models/churn_model.h5',
         'models/trained_models/return_risk_model.h5',
-        'models/trained_models/purchase_model.h5',
         'models/scalers/churn_scaler.pkl',
         'models/scalers/return_risk_scaler.pkl',
-        'models/scalers/purchase_scaler.pkl'
     ]
     
     # Check if any model file is missing
@@ -81,7 +79,7 @@ def check_and_train_models(engine):
         try:
             # Train churn model
             logger.info("Training churn prediction model...")
-            #train_churn(engine)
+            train_churn(engine)
             logger.info("Churn model training completed")
             
             # Train return risk model
@@ -90,9 +88,9 @@ def check_and_train_models(engine):
             logger.info("Return risk model training completed")
             
             # Train purchase model
-            logger.info("Training purchase prediction model...")
-            #train_purchase(engine)
-            logger.info("Purchase model training completed")
+            logger.info("Training purchase prediction model (NCF)...")
+            train_purchase_ncf(engine)
+            logger.info("Purchase model (NCF) training completed")
             
             logger.info("All models trained successfully")
         except Exception as e:

@@ -10,8 +10,9 @@ import os
 app = FastAPI(title="Churn Prediction API")
 
 # Model and scaler paths
-MODEL_PATH = "models/trained_models/churn_model.h5"
-SCALER_PATH = "models/scalers/churn_scaler.pkl"
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(BASE_DIR, "..", "models", "trained_models", "churn_model.h5")
+SCALER_PATH = os.path.join(BASE_DIR, "..", "models", "trained_models", "churn_scaler.pkl")
 
 # Initialize model and scaler as None
 model = None
@@ -36,7 +37,6 @@ class ChurnFeatures(BaseModel):
     total_spent: float = Field(..., description="Total amount spent by customer")
     total_orders: int = Field(..., description="Total number of orders")
     avg_order_value: float = Field(..., description="Average order value")
-    customer_tenure_days: int = Field(..., description="Number of days since first order")
     year: int = Field(..., description="Current year")
     month: int = Field(..., description="Current month")
     season: int = Field(..., description="Season (1: Winter, 2: Spring, 3: Summer, 4: Fall)")
@@ -84,7 +84,6 @@ async def predict_churn(features: ChurnFeatures):
             features.total_spent,
             features.total_orders,
             features.avg_order_value,
-            features.customer_tenure_days,
             features.year,
             features.month,
             features.season,
@@ -113,7 +112,7 @@ async def predict_churn(features: ChurnFeatures):
         
         # Get feature importance scores
         feature_names = [
-            "total_spent", "total_orders", "avg_order_value", "customer_tenure_days",
+            "total_spent", "total_orders", "avg_order_value",
             "year", "month", "season", "is_summer"
         ]
         feature_importance = {

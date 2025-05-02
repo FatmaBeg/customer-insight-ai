@@ -12,7 +12,7 @@ app = FastAPI(title="Return Risk Prediction API")
 
 # Model and scaler paths
 MODEL_PATH = "models/trained_models/return_risk_model.h5"
-SCALER_PATH = "models/scalers/return_risk_scaler.pkl"
+SCALER_PATH = "models/trained_models/return_risk_scaler.pkl"
 
 # Initialize model and scaler as None
 model = None
