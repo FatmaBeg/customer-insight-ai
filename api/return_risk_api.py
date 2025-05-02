@@ -1,34 +1,36 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 import numpy as np
-from typing import List, Dict, Optional
-from models.utils import load_model, load_scaler, load_shap_explainer
+import pickle
+import shap
+from tensorflow.keras.models import load_model
+from typing import List, Dict, Any
+import os
+from models.utils import load_shap_explainer
 
 app = FastAPI(title="Return Risk Prediction API")
 
-# Model paths
+# Model and scaler paths
 MODEL_PATH = "models/trained_models/return_risk_model.h5"
-SCALER_PATH = "models/trained_models/return_risk_scaler.pkl"
-SHAP_PATH = "explainability/shap_explainer.py"
+SCALER_PATH = "models/scalers/return_risk_scaler.pkl"
 
-# Initialize model, scaler, and SHAP explainer as None
+# Initialize model and scaler as None
 model = None
 scaler = None
-shap_explainer = None
 
 def load_models():
-    """Lazy loading of model, scaler, and SHAP explainer."""
-    global model, scaler, shap_explainer
-    if model is None or scaler is None or shap_explainer is None:
-        try:
-            model = load_model(MODEL_PATH)
-            scaler = load_scaler(SCALER_PATH)
-            shap_explainer = load_shap_explainer(SHAP_PATH)
-        except FileNotFoundError as e:
-            raise HTTPException(
-                status_code=503,
-                detail=f"Model, scaler, or SHAP explainer not found. Please train the model first: {str(e)}"
-            )
+    """Load model and scaler if they exist."""
+    global model, scaler
+    if model is None and scaler is None:
+        if os.path.exists(MODEL_PATH) and os.path.exists(SCALER_PATH):
+            try:
+                model = load_model(MODEL_PATH)
+                with open(SCALER_PATH, 'rb') as f:
+                    scaler = pickle.load(f)
+            except Exception as e:
+                raise RuntimeError(f"Failed to load model or scaler: {str(e)}")
+        else:
+            raise RuntimeError("Model or scaler files not found. Please train the models first.")
 
 class ReturnRiskFeatures(BaseModel):
     """Input features for return risk prediction."""
@@ -102,6 +104,9 @@ async def predict_return_risk(features: ReturnRiskFeatures) -> Dict:
         # Load models if not already loaded
         load_models()
         
+        if model is None or scaler is None:
+            raise HTTPException(status_code=503, detail="Model not ready. Please try again later.")
+            
         # Convert features to numpy array
         feature_array = np.array([
             features.discount,

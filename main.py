@@ -1,4 +1,5 @@
 import logging
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.churn_api import app as churn_app
@@ -61,29 +62,44 @@ def setup_database():
         logger.error(f"Failed to establish database connection: {str(e)}")
         raise
 
-def train_models(engine):
-    """Train all models in sequence."""
-    logger.info("Starting model training pipeline...")
+def check_and_train_models(engine):
+    """Check if model files exist and train if necessary."""
+    model_files = [
+        'models/trained_models/churn_model.h5',
+        'models/trained_models/return_risk_model.h5',
+        'models/trained_models/purchase_model.h5',
+        'models/scalers/churn_scaler.pkl',
+        'models/scalers/return_risk_scaler.pkl',
+        'models/scalers/purchase_scaler.pkl'
+    ]
     
-    try:
-        # Train churn model
-        logger.info("Training churn prediction model...")
-        train_churn(engine)
-        logger.info("Churn model training completed")
-        
-        # Train return risk model
-        logger.info("Training return risk prediction model...")
-        train_return_risk(engine)
-        logger.info("Return risk model training completed")
-        
-        # Train purchase model
-        logger.info("Training purchase prediction model...")
-        train_purchase(engine)
-        logger.info("Purchase model training completed")
-        
-    except Exception as e:
-        logger.error(f"Error during model training: {str(e)}")
-        raise
+    # Check if any model file is missing
+    missing_files = [f for f in model_files if not os.path.exists(f)]
+    
+    if missing_files:
+        logger.info("Some model files are missing. Starting model training...")
+        try:
+            # Train churn model
+            logger.info("Training churn prediction model...")
+            train_churn(engine)
+            logger.info("Churn model training completed")
+            
+            # Train return risk model
+            logger.info("Training return risk prediction model...")
+            train_return_risk(engine)
+            logger.info("Return risk model training completed")
+            
+            # Train purchase model
+            logger.info("Training purchase prediction model...")
+            train_purchase(engine)
+            logger.info("Purchase model training completed")
+            
+            logger.info("All models trained successfully")
+        except Exception as e:
+            logger.error(f"Error during model training: {str(e)}")
+            raise
+    else:
+        logger.info("All model files exist. Skipping training.")
 
 def start_api():
     """Start the FastAPI application."""
@@ -96,19 +112,19 @@ def start_api():
         raise
 
 def main():
-    """Main function to run the entire pipeline."""
+    """Main entry point for the application."""
     try:
         # Setup database
         engine = setup_database()
         
-        # Train models
-        train_models(engine)
+        # Check and train models if necessary
+        check_and_train_models(engine)
         
         # Start API
         start_api()
         
     except Exception as e:
-        logger.error(f"Pipeline failed: {str(e)}")
+        logger.error(f"Error in main: {str(e)}")
         raise
 
 if __name__ == "__main__":

@@ -5,19 +5,31 @@ import pickle
 import shap
 from tensorflow.keras.models import load_model
 from typing import List, Dict, Any
+import os
 
 app = FastAPI(title="Churn Prediction API")
 
-# Load model and scaler
+# Model and scaler paths
 MODEL_PATH = "models/trained_models/churn_model.h5"
-SCALER_PATH = "models/trained_models/churn_scaler.pkl"
+SCALER_PATH = "models/scalers/churn_scaler.pkl"
 
-try:
-    model = load_model(MODEL_PATH)
-    with open(SCALER_PATH, 'rb') as f:
-        scaler = pickle.load(f)
-except Exception as e:
-    raise RuntimeError(f"Failed to load model or scaler: {str(e)}")
+# Initialize model and scaler as None
+model = None
+scaler = None
+
+def load_models():
+    """Load model and scaler if they exist."""
+    global model, scaler
+    if model is None and scaler is None:
+        if os.path.exists(MODEL_PATH) and os.path.exists(SCALER_PATH):
+            try:
+                model = load_model(MODEL_PATH)
+                with open(SCALER_PATH, 'rb') as f:
+                    scaler = pickle.load(f)
+            except Exception as e:
+                raise RuntimeError(f"Failed to load model or scaler: {str(e)}")
+        else:
+            raise RuntimeError("Model or scaler files not found. Please train the models first.")
 
 class ChurnFeatures(BaseModel):
     """Input features for churn prediction."""
@@ -61,6 +73,12 @@ async def predict_churn(features: ChurnFeatures):
         Churn prediction with probability and confidence
     """
     try:
+        # Load models if not already loaded
+        load_models()
+        
+        if model is None or scaler is None:
+            raise HTTPException(status_code=503, detail="Model not ready. Please try again later.")
+            
         # Convert features to numpy array
         feature_array = np.array([
             features.total_spent,

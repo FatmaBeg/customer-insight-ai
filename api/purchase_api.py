@@ -1,34 +1,35 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 import numpy as np
-from typing import List, Dict, Optional
-from models.utils import load_model, load_object
+import pickle
+import shap
+from tensorflow.keras.models import load_model
+from typing import List, Dict, Any
+import os
 
-app = FastAPI(title="Product Recommendation API")
+app = FastAPI(title="Purchase Prediction API")
 
-# Model paths
+# Model and scaler paths
 MODEL_PATH = "models/trained_models/purchase_model.h5"
-CATEGORY_NAMES_PATH = "models/trained_models/category_names.pkl"
-SCALER_PATH = "models/trained_models/purchase_scaler.pkl"
+SCALER_PATH = "models/scalers/purchase_scaler.pkl"
 
-# Initialize model, category names, and scaler as None
+# Initialize model and scaler as None
 model = None
-category_names = None
 scaler = None
 
 def load_models():
-    """Lazy loading of model, category names, and scaler."""
-    global model, category_names, scaler
-    if model is None or category_names is None or scaler is None:
-        try:
-            model = load_model(MODEL_PATH)
-            category_names = load_object(CATEGORY_NAMES_PATH)
-            scaler = load_object(SCALER_PATH)
-        except FileNotFoundError as e:
-            raise HTTPException(
-                status_code=503,
-                detail=f"Model, category names, or scaler not found. Please train the model first: {str(e)}"
-            )
+    """Load model and scaler if they exist."""
+    global model, scaler
+    if model is None and scaler is None:
+        if os.path.exists(MODEL_PATH) and os.path.exists(SCALER_PATH):
+            try:
+                model = load_model(MODEL_PATH)
+                with open(SCALER_PATH, 'rb') as f:
+                    scaler = pickle.load(f)
+            except Exception as e:
+                raise RuntimeError(f"Failed to load model or scaler: {str(e)}")
+        else:
+            raise RuntimeError("Model or scaler files not found. Please train the models first.")
 
 class CategorySpending(BaseModel):
     """Input features for product recommendation."""
@@ -83,6 +84,9 @@ async def predict_purchase(spending: CategorySpending) -> Dict:
         # Load models if not already loaded
         load_models()
         
+        if model is None or scaler is None:
+            raise HTTPException(status_code=503, detail="Model not ready. Please try again later.")
+            
         # Create feature array from category spending
         feature_array = np.zeros(len(category_names))
         for category, amount in spending.category_spending.items():
