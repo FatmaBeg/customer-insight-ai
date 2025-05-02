@@ -12,6 +12,8 @@ from tensorflow.keras.optimizers import Adam
 from data.queries import get_churn_raw_data
 from features.churn_features import ChurnFeatureEngineer
 from explainability.shap_explainer import SHAPExplainer
+from utils.churn_augmenter import ChurnAugmenter
+
 
 def create_mlp_model(input_dim):
     """
@@ -53,41 +55,46 @@ def main(engine):
     print("Loading raw data...")
     raw_data = get_churn_raw_data(engine)
     
-    # 2. Extract features and pseudo-labels
+    # 2. Extract features and labels
     print("Extracting features...")
     feature_engineer = ChurnFeatureEngineer(raw_data)
     features = feature_engineer.transform()
-    
-    # Prepare X and y
-    X = features.drop(['customer_id', 'will_churn'], axis=1)
+
+    # 🔁 Değişen satır: feature_engineer.transform() artık farklı kolonlar üretiyor
+    # ['customer_id', 'total_spent', 'total_orders', 'avg_order_value',
+    #  'year', 'month', 'season', 'is_summer', 'will_churn']
+
+    # 3. Prepare X and y
+    X = features.drop(columns=['customer_id', 'will_churn'])
     y = features['will_churn']
-    
-    # 3. Standardize features and split data
-    print("Preprocessing data...")
+
+    # 🔄 Oversample churn=1
+    X_aug, y_aug = ChurnAugmenter.oversample_churners(X, y, multiplier=3)
+
+    print("X_aug shape:", X_aug.shape)
+    print("y_aug shape:", y_aug.shape)
+
+    # Bu kısım değişmedi çünkü X şimdi de doğru formatta geliyor
     scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
-    
+    X_scaled = scaler.fit_transform(X_aug)
+
     X_train, X_test, y_train, y_test = train_test_split(
-        X_scaled, y, test_size=0.2, random_state=42, stratify=y
-    )
-    
-    # Calculate class weights
+    X_scaled, y_aug,
+    test_size=0.2,
+    random_state=42,
+    stratify=y_aug  # sınıf dengesini korumak için önemli
+)
+
+    # 🟡 Class imbalance yönetimi — önemli, kalıyor
     class_weights = {
         0: len(y_train) / (2 * (len(y_train) - y_train.sum())),
         1: len(y_train) / (2 * y_train.sum())
     }
-    
-    # 4. Train model
-    print("Training model...")
+
+    # Model oluşturma ve eğitimi — aynen kalıyor
     model = create_mlp_model(input_dim=X_train.shape[1])
-    
-    early_stopping = EarlyStopping(
-        monitor='val_loss',
-        patience=20,
-        restore_best_weights=True,
-        min_delta=0.001
-    )
-    
+    early_stopping = EarlyStopping(monitor='val_loss', patience=20, restore_best_weights=True, min_delta=0.001)
+
     history = model.fit(
         X_train, y_train,
         validation_split=0.2,
@@ -97,38 +104,34 @@ def main(engine):
         class_weight=class_weights,
         verbose=1
     )
-    
-    # 5. Save model and scaler
-    print("Saving model and scaler...")
+
+    # Kayıt işlemleri — olduğu gibi korunuyor
     model.save('models/trained_models/churn_model.h5')
     with open('models/trained_models/churn_scaler.pkl', 'wb') as f:
         pickle.dump(scaler, f)
-    
-    # 6. Analyze feature importance with SHAP
+
+    # 🔍 SHAP Analizi
     print("\nAnalyzing feature importance...")
     feature_names = X.columns.tolist()
-    
-    # Create and use SHAP explainer
+
+    # 🔄 Burada da SHAP modeli yeniden kullanılıyor
     shap_explainer = SHAPExplainer(model)
     shap_explainer.create_explainer(X_train)
     shap_values, top_features = shap_explainer.analyze_feature_importance(X_train, feature_names)
-    
-    # Print metrics and feature importance
-    print("\nModel Evaluation:")
+
+    # Tahmin ve metrik değerlendirme
     y_pred = (model.predict(X_test) > 0.5).astype(int)
-    
+
     print("\nClassification Report:")
     print(classification_report(y_test, y_pred))
-    
+
     print("\nConfusion Matrix:")
     print(confusion_matrix(y_test, y_pred))
-    
+
     print("\nTop 3 Contributing Features:")
     for feature, importance in top_features:
-        # Ensure importance is a float
-        importance_float = float(importance)
-        print(f"{feature}: {importance_float:.4f}")
-    
+        print(f"{feature}: {float(importance):.4f}")
+
     print("\nTraining Summary:")
     print(f"Final training accuracy: {history.history['accuracy'][-1]:.4f}")
     print(f"Final validation accuracy: {history.history['val_accuracy'][-1]:.4f}")

@@ -83,12 +83,20 @@ class SHAPExplainer:
         shap_values = self.explainer.shap_values(X_sample)
         
         # Handle multi-output case
+        # Handle multi-output case (örneğin sigmoid çıkışlı modelde liste dönebilir)
         if isinstance(shap_values, list):
-            # For multi-output models, average the SHAP values across outputs
-            shap_values = np.mean([np.array(sv) for sv in shap_values], axis=0)
+            shap_values = shap_values[0]  # sadece ilk çıkışı al
         else:
             shap_values = np.array(shap_values)
-        
+         # mean absolute shap değerlerini al
+        mean_shap_values = np.abs(shap_values).mean(axis=0)
+
+        # En büyük 3 özelliği sırala
+        top_indices = np.argsort(mean_shap_values)[-3:][::-1]
+        top_features = [
+            (feature_names[int(i)], float(mean_shap_values[int(i)]))
+            for i in top_indices
+        ]
         # Calculate mean absolute SHAP values
         mean_shap_values = np.abs(shap_values).mean(axis=0)
         

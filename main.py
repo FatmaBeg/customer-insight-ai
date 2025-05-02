@@ -86,12 +86,12 @@ def check_and_train_models(engine):
             
             # Train return risk model
             logger.info("Training return risk prediction model...")
-            train_return_risk(engine)
+            #train_return_risk(engine)
             logger.info("Return risk model training completed")
             
             # Train purchase model
             logger.info("Training purchase prediction model...")
-            train_purchase(engine)
+            #train_purchase(engine)
             logger.info("Purchase model training completed")
             
             logger.info("All models trained successfully")

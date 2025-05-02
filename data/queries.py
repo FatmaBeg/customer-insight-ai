@@ -3,24 +3,19 @@ import pandas as pd
 
 def get_churn_raw_data(engine):
     """
-    Extracts raw data for churn prediction by joining Customers, Orders, and OrderDetails tables.
-    
-    Args:
-        engine: SQLAlchemy engine instance
-        
-    Returns:
-        DataFrame with customer_id, order_id, order_date, and total_spent
+    Extracts customer order history for churn prediction:
+    - Includes customer_id, order_id, order_date, unit_price, quantity
     """
     query = text("""
         SELECT 
             c.customer_id,
             o.order_id,
             o.order_date,
-            SUM(od.unit_price * od.quantity) as total_spent
+            od.unit_price,
+            od.quantity
         FROM customers c
         JOIN orders o ON c.customer_id = o.customer_id
         JOIN order_details od ON o.order_id = od.order_id
-        GROUP BY c.customer_id, o.order_id, o.order_date
         ORDER BY c.customer_id, o.order_date
     """)
     
