@@ -102,7 +102,7 @@ def main(engine):
     model.save('models/trained_models/return_risk_model.h5')
     with open('models/trained_models/return_risk_scaler.pkl', 'wb') as f:
         pickle.dump(scaler, f)
-    
+
     # 6. Analyze feature importance with SHAP
     print("\nAnalyzing feature importance...")
     feature_names = X.columns.tolist()
@@ -112,6 +112,9 @@ def main(engine):
     shap_explainer.create_explainer(X_train)
     shap_values, top_features = shap_explainer.analyze_feature_importance(X_train, feature_names)
     
+    with open("models/trained_models/return_risk_top_features.pkl", "wb") as f:
+        pickle.dump(top_features, f)
+
     # Print metrics and feature importance
     print("\nModel Evaluation:")
     y_pred = (model.predict(X_test) > 0.5).astype(int)
