@@ -14,7 +14,7 @@ class ChurnFeatureEngineer:
         """
         last_order = self.raw_df.groupby('customer_id')['order_date'].max().reset_index()
         cutoff = self.raw_df['order_date'].max() - timedelta(days=180)
-        last_order['will_churn'] = (last_order['order_date'] < cutoff).astype(int)
+        last_order['will_churn'] = (last_order['order_date'c] < cutoff).astype(int)
         return last_order[['customer_id', 'will_churn']]
 
     def get_temporal_features(self):

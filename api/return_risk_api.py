@@ -37,15 +37,12 @@ def load_assets():
         if not os.path.exists(MODEL_PATH):
             raise RuntimeError("Model file not found.")
         model = load_model(MODEL_PATH)
-    print("ansjkcdnjcksd")
+
     if scaler is None:
         if not os.path.exists(SCALER_PATH):
             raise RuntimeError("Scaler file not found.")
         with open(SCALER_PATH, "rb") as f:
             scaler = pickle.load(f)
-            print("Type of content:", type(scaler))
-            print("First item:", scaler[0])
-            print("Type of first item:", type(scaler[0]))
             
 def calculate_confidence(prob: float) -> float:
     return round(2 * abs(prob - 0.5), 4)

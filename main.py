@@ -79,7 +79,7 @@ def check_and_train_models(engine):
         try:
             # Train churn model
             logger.info("Training churn prediction model...")
-            #train_churn(engine)
+            train_churn(engine)
             logger.info("Churn model training completed")
             
             # Train return risk model
@@ -89,7 +89,7 @@ def check_and_train_models(engine):
             
             # Train purchase model
             logger.info("Training purchase prediction model (NCF)...")
-            #train_purchase_ncf(engine)
+            train_purchase_ncf(engine)
             logger.info("Purchase model (NCF) training completed")
             
             logger.info("All models trained successfully")
